@@ -427,19 +427,19 @@ SP<CWLSurfaceResource> CWLSurfaceResource::findWithCM() {
     return findFirstPreorder([this](SP<CWLSurfaceResource> surf) { return surf->m_colorManagement.valid() && surf->extends() == extends(); });
 }
 
-std::pair<SP<CWLSurfaceResource>, Vector2D> CWLSurfaceResource::at(const Vector2D& localCoords, bool allowsInput) {
+std::pair<SP<CWLSurfaceResource>, Vector2D> CWLSurfaceResource::at(const Vector2D& localCoords, bool allowsInput, double scale) {
     std::vector<std::pair<SP<CWLSurfaceResource>, Vector2D>> surfs;
     breadthfirst([&surfs](SP<CWLSurfaceResource> surf, const Vector2D& offset, void* data) { surfs.emplace_back(std::make_pair<>(surf, offset)); }, &surfs);
 
     for (auto const& [surf, pos] : surfs | std::views::reverse) {
         if (!allowsInput) {
             const auto BOX = CBox{pos, surf->m_current.size};
-            if (BOX.containsPoint(localCoords))
-                return {surf, localCoords - pos};
+            if (BOX.containsPoint(localCoords * scale))
+                return {surf, localCoords * scale - pos};
         } else {
             const auto REGION = surf->m_current.input.copy().intersect(CBox{{}, surf->m_current.size}).translate(pos);
-            if (REGION.containsPoint(localCoords))
-                return {surf, localCoords - pos};
+            if (REGION.containsPoint(localCoords * scale))
+                return {surf, localCoords * scale - pos};
         }
     }
 

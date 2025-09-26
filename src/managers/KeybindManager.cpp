@@ -2192,6 +2192,41 @@ SDispatchResult CKeybindManager::resizeActive(std::string args) {
     return {};
 }
 
+SDispatchResult CKeybindManager::scaleActive(std::string args) {
+    const auto PLASTWINDOW = g_pCompositor->m_pLastWindow.lock();
+
+    if (!PLASTWINDOW)
+        return {.success = false, .error = "Window not found"};
+
+    std::optional<float> scaleResult;
+    bool                 exact = false;
+
+    if (args.starts_with("exact")) {
+        exact       = true;
+        scaleResult = getPlusMinusKeywordResult(args.substr(5), 0);
+    } else
+        scaleResult = getPlusMinusKeywordResult(args, 0);
+
+    if (!scaleResult.has_value()) {
+        Debug::log(ERR, "Invalid arg \"{}\" in scaleactive!", args);
+        return {.success = false, .error = "Invalid scale argument in scaleactive!"};
+    }
+
+    float scale = scaleResult.value();
+    if (!exact)
+        scale += 1.0 / PLASTWINDOW->m_sWindowData.contentScale.valueOr(1.0f);
+
+    if (scale > 0.0f) {
+        scale                                   = std::max(scale, 0.25f);
+        PLASTWINDOW->m_sWindowData.contentScale = CWindowOverridableVar(1.0f / scale, PRIORITY_SET_PROP);
+    } else
+        PLASTWINDOW->m_sWindowData.contentScale.unset(PRIORITY_SET_PROP);
+
+    PLASTWINDOW->sendWindowSize();
+
+    return {};
+}
+
 SDispatchResult CKeybindManager::moveActive(std::string args) {
     const auto PLASTWINDOW = g_pCompositor->m_lastWindow.lock();
 
@@ -3164,6 +3199,9 @@ SDispatchResult CKeybindManager::setProp(std::string args) {
             PWINDOW->m_windowData.minSize = CWindowOverridableVar(configStringToVector2D(VAL), PRIORITY_SET_PROP);
             PWINDOW->clampWindowSize(PWINDOW->m_windowData.minSize.value(), std::nullopt);
             PWINDOW->setHidden(false);
+        } else if (PROP == "contentscale") {
+            PWINDOW->m_sWindowData.contentScale = CWindowOverridableVar(1.0f / std::stof(VAL), PRIORITY_SET_PROP);
+            PWINDOW->sendWindowSize();
         } else if (PROP == "alpha") {
             PWINDOW->m_windowData.alpha = CWindowOverridableVar(SAlphaValue{std::stof(VAL), PWINDOW->m_windowData.alpha.valueOrDefault().overridden}, PRIORITY_SET_PROP);
         } else if (PROP == "alphainactive") {

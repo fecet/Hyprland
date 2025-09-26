@@ -77,7 +77,8 @@ void CSurfacePassElement::draw(const CRegion& damage) {
         DELTALESSTHAN(windowBox.height, m_data.surface->m_current.bufferSize.y, 3) /* off by one-or-two */ &&
         (!m_data.pWindow || (!m_data.pWindow->m_realSize->isBeingAnimated() && !INTERACTIVERESIZEINPROGRESS)) /* not window or not animated/resizing */;
 
-    g_pHyprRenderer->calculateUVForSurface(m_data.pWindow, m_data.surface, m_data.pMonitor->m_self.lock(), m_data.mainSurface, windowBox.size(), PROJSIZEUNSCALED, MISALIGNEDFSV1);
+    g_pHyprRenderer->calculateUVForSurface(m_data.pWindow, m_data.surface, m_data.pMonitor->m_self.lock(), m_data.mainSurface, windowBox.size(), PROJSIZEUNSCALED,
+                                           MISALIGNEDFSV1, m_data.contentScale);
 
     auto cancelRender                      = false;
     g_pHyprOpenGL->m_renderData.clipRegion = visibleRegion(cancelRender);
@@ -167,7 +168,8 @@ CBox CSurfacePassElement::getTexBox() {
 
     CBox         windowBox;
     if (m_data.surface && m_data.mainSurface) {
-        windowBox = {sc<int>(outputX) + m_data.pos.x + m_data.localPos.x, sc<int>(outputY) + m_data.pos.y + m_data.localPos.y, m_data.w, m_data.h};
+        windowBox = {sc<int>(outputX) + m_data.pos.x + (m_data.localPos.x / m_data.contentScale), sc<int>(outputY) + m_data.pos.y + (m_data.localPos.y / m_data.contentScale),
+                     m_data.w, m_data.h};
 
         // however, if surface buffer w / h < box, we need to adjust them
         const auto PWINDOW = PSURFACE ? PSURFACE->getWindow() : nullptr;
@@ -189,11 +191,10 @@ CBox CSurfacePassElement::getTexBox() {
             }
         }
     } else { //  here we clamp to 2, these might be some tiny specks
-
         const auto SURFSIZE = m_data.surface->m_current.size;
 
-        windowBox = {sc<int>(outputX) + m_data.pos.x + m_data.localPos.x, sc<int>(outputY) + m_data.pos.y + m_data.localPos.y, std::max(sc<float>(SURFSIZE.x), 2.F),
-                     std::max(sc<float>(SURFSIZE.y), 2.F)};
+        windowBox = {sc<int>(outputX) + m_data.pos.x + (m_data.localPos.x / m_data.contentScale), sc<int>(outputY) + m_data.pos.y + (m_data.localPos.y / m_data.contentScale),
+                     std::max(sc<float>(SURFSIZE.x) / m_data.contentScale, 2.F), std::max(sc<float>(SURFSIZE.y) / m_data.contentScale, 2.F)};
         if (m_data.pWindow && m_data.pWindow->m_realSize->isBeingAnimated() && m_data.surface && !m_data.mainSurface && m_data.squishOversized /* subsurface */) {
             // adjust subsurfaces to the window
             const auto REPORTED = m_data.pWindow->getReportedSize();
@@ -205,10 +206,10 @@ CBox CSurfacePassElement::getTexBox() {
     }
 
     if (m_data.squishOversized) {
-        if (m_data.localPos.x + windowBox.width > m_data.w)
-            windowBox.width = m_data.w - m_data.localPos.x;
-        if (m_data.localPos.y + windowBox.height > m_data.h)
-            windowBox.height = m_data.h - m_data.localPos.y;
+        if (m_data.localPos.x / m_data.contentScale + windowBox.width > m_data.w)
+            windowBox.width = m_data.w - m_data.localPos.x / m_data.contentScale;
+        if (m_data.localPos.y / m_data.contentScale + windowBox.height > m_data.h)
+            windowBox.height = m_data.h - m_data.localPos.y / m_data.contentScale;
     }
 
     return windowBox;

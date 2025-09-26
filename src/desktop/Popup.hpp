@@ -38,6 +38,8 @@ class CPopup {
     bool           visible();
     bool           inert() const;
 
+    float          getContentScale() const;
+
     // will also loop over this node
     void       breadthfirst(std::function<void(WP<CPopup>, void*)> fn, void* data);
     WP<CPopup> at(const Vector2D& globalCoords, bool allowsInput = false);

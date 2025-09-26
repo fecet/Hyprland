@@ -783,6 +783,14 @@ void CWindow::applyDynamicRule(const SP<CWindowRule>& r) {
             } catch (std::exception& e) { Debug::log(ERR, "minsize rule \"{}\" failed with: {}", r->m_rule, e.what()); }
             break;
         }
+        case CWindowRule::RULE_CONTENTSCALE: {
+            try {
+                const auto SCALE           = std::stof(r->szRule.substr(13));
+                m_windowData.contentScale = CWindowOverridableVar(1.0f / SCALE, priority);
+                sendWindowSize();
+            } catch (std::exception& e) { Debug::log(ERR, "contentscale rule \"{}\" failed with: {}", r->szRule, e.what()); }
+            break;
+        }
         case CWindowRule::RULE_RENDERUNFOCUSED: {
             m_windowData.renderUnfocused = CWindowOverridableVar(true, priority);
             g_pHyprRenderer->addWindowToRenderUnfocused(m_self.lock());
@@ -1261,6 +1269,10 @@ bool CWindow::isScrollMouseOverridden() {
 
 bool CWindow::isScrollTouchpadOverridden() {
     return m_windowData.scrollTouchpad.hasValue();
+}
+
+float CWindow::getContentScale() {
+    return m_windowData.contentScale.valueOr(1.0f);
 }
 
 bool CWindow::canBeTorn() {
@@ -1806,7 +1818,7 @@ void CWindow::sendWindowSize(bool force) {
     // TODO: this should be decoupled from setWindowSize IMO
     const auto REPORTPOS = realToReportPosition();
 
-    const auto REPORTSIZE = realToReportSize();
+    const auto REPORTSIZE = realToReportSize() * getContentScale();
 
     if (!force && m_pendingReportedSize == REPORTSIZE && (m_reportedPosition == REPORTPOS || !m_isX11))
         return;

@@ -8,9 +8,9 @@ static const auto RULES = std::unordered_set<std::string>{
     "float", "fullscreen", "maximize", "noinitialfocus", "pin", "stayfocused", "tile", "renderunfocused", "persistentsize",
 };
 static const auto RULES_PREFIX = std::unordered_set<std::string>{
-    "animation",     "bordercolor", "bordersize", "center",  "content", "fullscreenstate", "group",    "idleinhibit",   "maxsize",     "minsize",        "monitor",
-    "move",          "noclosefor",  "opacity",    "plugin:", "prop",    "pseudo",          "rounding", "roundingpower", "scrollmouse", "scrolltouchpad", "size",
-    "suppressevent", "tag",         "workspace",  "xray",    "novrr",
+    "animation",     "bordercolor", "bordersize", "center",  "content",     "fullscreenstate", "group",    "idleinhibit",   "maxsize",
+    "minsize",       "monitor",    "move",       "opacity", "plugin:",     "prop",           "pseudo",   "rounding",      "roundingpower",
+    "scrollmouse",   "scrolltouchpad",            "size",    "suppressevent","tag",            "workspace",       "xray",    "contentscale",
 };
 
 CWindowRule::CWindowRule(const std::string& rule, const std::string& value, bool isV2, bool isExecRule) : m_value(value), m_rule(rule), m_v2(isV2), m_execRule(isExecRule) {
@@ -56,6 +56,8 @@ CWindowRule::CWindowRule(const std::string& rule, const std::string& value, bool
         m_ruleType = RULE_MAXSIZE;
     else if (rule.starts_with("minsize"))
         m_ruleType = RULE_MINSIZE;
+    else if (rule.starts_with("contentscale"))
+        m_ruleType = RULE_CONTENTSCALE;
     else if (rule.starts_with("monitor"))
         m_ruleType = RULE_MONITOR;
     else if (rule.starts_with("move"))

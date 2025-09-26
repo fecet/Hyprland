@@ -1046,11 +1046,13 @@ SP<CWLSurfaceResource> CCompositor::vectorWindowToSurface(const Vector2D& pos, P
 
     if (PPOPUP) {
         const auto OFF = PPOPUP->coordsRelativeToParent();
-        sl             = pos - pWindow->m_realPosition->goal() - OFF;
+        // The offset of the popup is in scaled coords (as the window surface has its contents scaled),
+        // but the popup doesn't have the surface scaled.
+        sl = (pos - pWindow->m_realPosition->goal()) * PPOPUP->getContentScale() - OFF;
         return PPOPUP->m_wlSurface->resource();
     }
 
-    auto [surf, local] = pWindow->m_wlSurface->resource()->at(pos - pWindow->m_realPosition->goal(), true);
+    auto [surf, local] = pWindow->m_wlSurface->resource()->at(pos - pWindow->m_realPosition->goal(), true, pWindow->getContentScale());
     if (surf) {
         sl = local;
         return surf;

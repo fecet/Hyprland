@@ -131,6 +131,7 @@ void CPopup::onMap() {
     const auto PMONITOR = g_pCompositor->getMonitorFromVector(COORDS);
 
     CBox       box = m_wlSurface->resource()->extends();
+    box.scale(1.0 / getContentScale());
     box.translate(COORDS).expand(4);
     g_pHyprRenderer->damageBox(box);
 
@@ -176,6 +177,7 @@ void CPopup::onUnmap() {
     const auto COORDS = coordsGlobal();
 
     CBox       box = m_wlSurface->resource()->extends();
+    box.scale(1.0 / getContentScale());
     box.translate(COORDS).expand(4);
     g_pHyprRenderer->damageBox(box);
 
@@ -206,12 +208,13 @@ void CPopup::onUnmap() {
                 return;
 
             auto box = CBox{p->coordsGlobal(), p->size()};
+            box.scale(1.0 / p->getContentScale());
             g_pHyprRenderer->damageBox(box);
         },
         nullptr);
 
     // TODO: probably refocus, but without a motion event?
-    // const bool WASLASTFOCUS = g_pSeatManager->state.keyboardFocus == m_pWLSurface->resource() || g_pSeatManager->state.pointerFocus == m_pWLSurface->resource();
+    // const bool WASLASTFOCUS = g_pSeatManager->state.keyboardFocus == m_wlSurface->resource() || g_pSeatManager->state.pointerFocus == m_wlSurface->resource();
 
     // if (WASLASTFOCUS)
     //     g_pInputManager->simulateMouseMovement();
@@ -245,7 +248,7 @@ void CPopup::onCommit(bool ignoreSiblings) {
     const auto COORDSLOCAL = coordsRelativeToParent();
 
     if (m_lastSize != m_resource->m_surface->m_surface->m_current.size || m_requestedReposition || m_lastPos != COORDSLOCAL) {
-        CBox box = {localToGlobal(m_lastPos), m_lastSize};
+        CBox box = {localToGlobal(m_lastPos), m_lastSize / getContentScale()};
         g_pHyprRenderer->damageBox(box);
         m_lastSize = m_resource->m_surface->m_surface->m_current.size;
         box        = {COORDS, m_lastSize};
@@ -257,7 +260,7 @@ void CPopup::onCommit(bool ignoreSiblings) {
     if (!ignoreSiblings && m_subsurfaceHead)
         m_subsurfaceHead->recheckDamageForSubsurfaces();
 
-    g_pHyprRenderer->damageSurface(m_wlSurface->resource(), COORDS.x, COORDS.y);
+    g_pHyprRenderer->damageSurface(m_wlSurface->resource(), COORDS.x, COORDS.y, 1.0 / getContentScale());
 
     m_requestedReposition = false;
 
@@ -282,7 +285,11 @@ void CPopup::reposition() {
     if (!PMONITOR)
         return;
 
-    CBox box = {PMONITOR->m_position.x, PMONITOR->m_position.y, PMONITOR->m_size.x, PMONITOR->m_size.y};
+    CBox       box   = {PMONITOR->m_position.x, PMONITOR->m_position.y, PMONITOR->m_size.x, PMONITOR->m_size.y};
+    const auto scale = getContentScale();
+    box.w            = COORDS.x + (box.w - COORDS.x) * scale;
+    box.h            = COORDS.y + (box.h - COORDS.y) * scale;
+
     m_resource->applyPositioning(box, COORDS);
 }
 
@@ -318,7 +325,11 @@ Vector2D CPopup::coordsGlobal() {
 }
 
 Vector2D CPopup::localToGlobal(const Vector2D& rel) {
-    return t1ParentCoords() + rel;
+    const auto coords = t1ParentCoords();
+    if (!m_windowOwner.expired())
+        return coords + rel / m_windowOwner->getContentScale();
+
+    return coords + rel;
 }
 
 Vector2D CPopup::t1ParentCoords() {
@@ -329,6 +340,13 @@ Vector2D CPopup::t1ParentCoords() {
 
     ASSERT(false);
     return {};
+}
+
+float CPopup::getContentScale() const {
+    if (!m_windowOwner.expired())
+        return m_windowOwner->getContentScale();
+
+    return 1.0f;
 }
 
 void CPopup::recheckTree() {
@@ -422,6 +440,8 @@ WP<CPopup> CPopup::at(const Vector2D& globalCoords, bool allowsInput) {
 
             if (size == Vector2D{})
                 size = p->size();
+
+            size /= getContentScale();
 
             const auto BOX = CBox{p->coordsGlobal() + offset, size};
             if (BOX.containsPoint(globalCoords))
